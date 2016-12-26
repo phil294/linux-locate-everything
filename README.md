@@ -1,5 +1,5 @@
 # linux-locate-everything
-Interactive command line tool for finding and opening files. Inspired by the awesome Everything (https://www.voidtools.com/).
+Interactive command line tool for finding and opening files. Inspired by the awesome Everything (https://www.voidtools.com/). Tested on XUbuntu 14.04 & 16.06.
 
 ![preview](http://i.imgur.com/vqBtFik.png)
 
