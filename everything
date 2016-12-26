@@ -125,7 +125,7 @@ while [ true ]; do
 		sql='SELECT hits FROM everything WHERE path = "'$path'";'
 		exists=$(sqlite3 "${HISTORY}" "$sql")
 		if [ -z $exists ]; then
-			sql='INSERT INTO everything (path,hits) VALUES ("'$path'",1);'
+			sql='INSERT INTO everything (path,hits) VALUES ("'$path'",1);' #todoescaping
 		else
 			sql='UPDATE everything SET hits = hits + 1 WHERE path = "'${path}'";'
 		fi
