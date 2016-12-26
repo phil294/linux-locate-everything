@@ -1,0 +1,142 @@
+#!/bin/bash
+
+# FAKE-EVERYTHING FOR UBUNTU
+# phi github.com/phil294
+# 2016 03 26 init
+# 2016 12 26 published
+
+BLUE='\033[0;34m'
+RED='\033[0;31m'
+ORANGE='\033[0;33m'
+LIGHTGREEN='\033[0;32m'
+LIGHTBLUE='\033[0;34m'
+CYAN='\033[0;36m'
+GRAY='\033[0;37m'
+NC='\033[0m'
+
+THISDIR="$(dirname "$(readlink -f "$0")")"
+HISTORY="${THISDIR}/history.db"
+MAXRESULTS=50
+
+if [ ! -f "${HISTORY}" ]; then
+	create_table='CREATE TABLE everything ( path text, hits int );'
+	$(sqlite3 "${HISTORY}" "$create_table")
+fi
+
+while [ true ]; do
+
+	echo -e "$NC################################################"
+	echo -e "################## ${CYAN}EVERYTHING$NC ##################"
+	echo "################################################"
+	echo -e "${CYAN}Search for..."
+	echo -ne "$NC> $RED"
+	read s
+	finds=$(locate -n ${MAXRESULTS} -Ai $s)
+
+	# FIND ALL MATCHING FILES
+	files=()
+	while read -r line; do
+		files+=("$line")
+	done <<< "$finds"
+	finds=
+	
+	 # FIND MATCHES WITH HITS DB (previously searched for)
+	sql='SELECT path FROM everything WHERE path IN ('
+	filesCnt=${#files[@]}
+	for ((i=0; i<$filesCnt; i++)); do
+		path="${files[$i]}"
+		sql="${sql}"'"'$path'"'
+		toGo=$(($filesCnt-$i-1))
+		if [ $toGo -gt 0 ]; then
+			sql="${sql}"', '
+		fi
+	done
+	sql="${sql}"') ORDER BY hits DESC;'
+	existing_files=() # existing == stored in db bc of old searches
+	existing=$(sqlite3 "${HISTORY}" "$sql")
+	while read -r line; do
+		existing_files+=("$line")
+	done <<< "$existing"
+	existing=
+	
+	# REMOVE EXISTING_FILES MATCHES FROM FILES LIST
+	tmp_arr=()
+	for (( j=0; j<${#files[*]}; j++ )); do
+		stayInArr=1
+		for (( i=0; i<${#existing_files[*]}; i++ )); do
+			if [ "${existing_files[$i]}" = "${files[$j]}" ]; then
+				stayInArr=0
+				break
+			fi
+		done
+		if [ $stayInArr = 1 ]; then
+			tmp_arr+=("${files[$j]}")
+		fi # else: bump
+	done
+	files=("${tmp_arr[@]}")
+	tmp_arr=
+	
+	# join existing_files + files = choices
+	choices=()
+	choices+=("${existing_files[@]}")
+	choices+=("${files[@]}")
+	files=
+	existing_files=
+	
+	#show only first 100 finds (includes existing and others)
+	#choices=("${choices[@]:0:${MAXRESULTS}}")
+	#->limited above
+
+	# ECHO CHOICES
+	for ((i=0; i<${#choices[@]}; i++));
+	do
+		base=$(basename "${choices[$i]}")
+		dir=$(dirname "${choices[$i]}")
+		if [ -d "${choices[$i]}" ]; then
+			base=${base}/
+		fi
+		
+		echo -e "$ORANGE$i$GRAY.....$NC\t$dir/$LIGHTBLUE$base"
+	done
+	
+	if (( ${#files[@]} >= ${MAXRESULTS} )); then
+		echo -e "${ORANGE}List truncated after ${MAXRESULTS} results."
+	fi
+
+	# OPEN PATH OR FILE
+	echo -e "${CYAN}xdg-open...? [number] or p[number] (open path) or n (none)"
+	echo -ne "$NC> $RED"
+	read no
+	if [[ "$no" = p* ]] ; then
+		pathno=${no:1}
+		path=$(dirname "${choices[$pathno]}")
+	else
+		if [[ -z "$no" ]]; then
+			no=0
+		fi
+		path="${choices[$no]}"
+	fi
+	if [ ! -e "$path" ]; then
+		echo -e "${CYAN}Invalid file specified.$NC"
+	elif [ "$no" != "n" ]; then
+		echo -e "${CYAN}xdg-opening $path"
+		xdg-open "$path" >  /dev/null 2>&1
+		# UPDATE DB ENTRY
+		sql='SELECT hits FROM everything WHERE path = "'$path'";'
+		exists=$(sqlite3 "${HISTORY}" "$sql")
+		if [ -z $exists ]; then
+			sql='INSERT INTO everything (path,hits) VALUES ("'$path'",1);'
+		else
+			sql='UPDATE everything SET hits = hits + 1 WHERE path = "'${path}'";'
+		fi
+		sqlite3 "${HISTORY}" "$sql"
+	fi
+	choices=
+
+done
+exit 0
+
+
+
+
+
