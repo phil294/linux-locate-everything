@@ -7,3 +7,5 @@ Basic interactive command line tool for finding and opening files. Inspired by t
 - Stores your opening history in a local sqlite database
 - Orders files by number of openings
 - Can open file with "[number]" or its respective path with "p[number]"
+
+Note: If you are looking for an Everything replacement on GNU/Linux, check out https://github.com/cboxdoerfer/fsearch.
